@@ -1,0 +1,71 @@
+name: Demo Workflow with Manual Approval
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # allows manual trigger from GitHub UI
+
+jobs:
+
+  # ── STEP 1: Checkout ──────────────────────────────────────────────
+  checkout:
+    name: "Step 1 · Checkout"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show repo info
+        run: |
+          echo "✅ Checked out branch: ${{ github.ref_name }}"
+          echo "📦 Repo: ${{ github.repository }}"
+          echo "🔖 Commit: ${{ github.sha }}"
+
+  # ── STEP 2: Build ─────────────────────────────────────────────────
+  build:
+    name: "Step 2 · Build"
+    runs-on: ubuntu-latest
+    needs: checkout
+    steps:
+      - name: Simulate build
+        run: |
+          echo "🔨 Building the project..."
+          sleep 3
+          echo "✅ Build successful!"
+
+  # ── MANUAL APPROVAL GATE ──────────────────────────────────────────
+  # Requires a GitHub Environment named "qa" with a required reviewer.
+  # Set it up at: Settings → Environments → New environment → "qa"
+  # Then add yourself (or a team) under "Required reviewers".
+  approval-gate:
+    name: "⏸ Waiting for Manual Approval"
+    runs-on: ubuntu-latest
+    needs: build
+    environment: qa   # <── this is where the approval prompt lives
+    steps:
+      - name: Approval granted
+        run: echo "🎉 Approval received! Proceeding to deploy..."
+
+  # ── STEP 3: Deploy ────────────────────────────────────────────────
+  deploy:
+    name: "Step 3 · Deploy"
+    runs-on: ubuntu-latest
+    needs: approval-gate
+    steps:
+      - name: Simulate deployment
+        run: |
+          echo "🚀 Deploying to qa..."
+          sleep 3
+          echo "✅ Deployment complete!"
+
+  # ── STEP 4: Notify ────────────────────────────────────────────────
+  notify:
+    name: "Step 4 · Notify"
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Send notification
+        run: |
+          echo "📣 Notifying team..."
+          echo "Deployed commit ${{ github.sha }} to qa by ${{ github.actor }}"
+          echo "✅ Notification sent!"
