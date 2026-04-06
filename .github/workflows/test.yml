@@ -3,7 +3,7 @@ name: Demo Workflow with Manual Approval
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
 
@@ -21,27 +21,35 @@ jobs:
           echo "📦 Repo: ${{ github.repository }}"
           echo "🔖 Commit: ${{ github.sha }}"
 
-  # ── STEP 2: Build ─────────────────────────────────────────────────
+  # ── STEP 2: Build + Upload Artifact ───────────────────────────────
   build:
-    name: "Step 2 · Build"
+    name: "Step 2 · Build & Upload Artifact"
     runs-on: ubuntu-latest
     needs: checkout
     steps:
-      - name: Simulate build
+      - name: Simulate build output
         run: |
           echo "🔨 Building the project..."
-          sleep 3
+          mkdir -p build-output
+          echo "Build version: 1.0.0"        > build-output/version.txt
+          echo "Built at: $(date)"           >> build-output/version.txt
+          echo "Commit: ${{ github.sha }}"   >> build-output/version.txt
           echo "✅ Build successful!"
+          cat build-output/version.txt
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output          # artifact name (visible in GitHub UI)
+          path: build-output/         # folder to upload
+          retention-days: 7           # auto-delete after 7 days
 
   # ── MANUAL APPROVAL GATE ──────────────────────────────────────────
-  # Requires a GitHub Environment named "qa" with a required reviewer.
-  # Set it up at: Settings → Environments → New environment → "qa"
-  # Then add yourself (or a team) under "Required reviewers".
   approval-gate:
     name: "⏸ Waiting for Manual Approval"
     runs-on: ubuntu-latest
     needs: build
-    environment: qa   # <── this is where the approval prompt lives
+    environment: qa
     steps:
       - name: Approval granted
         run: echo "🎉 Approval received! Proceeding to deploy..."
@@ -54,8 +62,8 @@ jobs:
     steps:
       - name: Simulate deployment
         run: |
-          echo "🚀 Deploying to qa..."
-          sleep 3
+          echo "🚀 Deploying to production..."
+          sleep 2
           echo "✅ Deployment complete!"
 
   # ── STEP 4: Notify ────────────────────────────────────────────────
@@ -67,5 +75,5 @@ jobs:
       - name: Send notification
         run: |
           echo "📣 Notifying team..."
-          echo "Deployed commit ${{ github.sha }} to qa by ${{ github.actor }}"
+          echo "Deployed commit ${{ github.sha }} by ${{ github.actor }}"
           echo "✅ Notification sent!"
